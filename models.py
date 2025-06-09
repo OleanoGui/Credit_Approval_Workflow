@@ -15,6 +15,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     role = Column(String, nullable=False)
+    password = Column(String, nullable=False)
 
 class CreditRequest(Base):
     __tablename__ = "credit_requests"
@@ -22,7 +23,7 @@ class CreditRequest(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     amount = Column(Float, nullable=False)
     status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.datetime)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # <-- CORRIGIDO
     user = relationship("User")
 
 class ApprovalStage(Base):
