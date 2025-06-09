@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
+from schemas import UserResponse
 from tasks import process_credit_request
 from fastapi.security import OAuth2PasswordRequestForm
 from auth import authenticate_user, create_access_token
@@ -10,6 +11,11 @@ from datetime import timedelta
 from pydantic import BaseModel
 from auth import hash_password
 from auth import get_current_user
+import logging
+from schemas import CreditRequestResponse
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -44,16 +50,18 @@ class UserCreate(BaseModel):
     role: str
     password: str
 
-@app.post("/users/")
+@app.post("/users/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     hashed_pw = hash_password(user.password)
     db_user = models.User(username=user.username, role=user.role, password=hashed_pw)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    logger.info(f"User created: {db_user.username} (id={db_user.id})")
+
     return db_user
 
-@app.post("/credit-requests/")
+@app.post("/credit-requests/", response_model=CreditRequestResponse)
 def create_credit_request(
     user_id: int, 
     amount: float, 
@@ -65,6 +73,8 @@ def create_credit_request(
     db.add(credit_request)
     db.commit()
     db.refresh(credit_request)
+    logger.info(f"Credit request created: {credit_request.id} by user {user_id}")
+
     process_credit_request.delay(credit_request.id)
     return credit_request
 
