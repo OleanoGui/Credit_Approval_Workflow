@@ -8,7 +8,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from auth import authenticate_user, create_access_token
 from datetime import timedelta
 from pydantic import BaseModel
-from auth import hash_password 
+from auth import hash_password
+from auth import get_current_user
 
 app = FastAPI()
 
@@ -53,7 +54,13 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @app.post("/credit-requests/")
-def create_credit_request(user_id: int, amount: float, db: Session = Depends(get_db)):
+def create_credit_request(
+    user_id: int, 
+    amount: float, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+
     credit_request = models.CreditRequest(user_id=user_id, amount=amount)
     db.add(credit_request)
     db.commit()
@@ -76,3 +83,9 @@ def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
         "amount": credit_request.amount,
         "user_id": credit_request.user_id
     }
+
+@app.get("/admin-only/")
+def admin_only_endpoint(current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return {"message": "You are Admin!"}
