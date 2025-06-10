@@ -57,3 +57,17 @@ Para rodar o frontend localmente:
 cd frontend
 npm install
 npm start
+
+## 📊 Observability: Prometheus & Grafana
+
+This project exposes application metrics at `/metrics` using [prometheus_fastapi_instrumentator](https://github.com/trallard/prometheus-fastapi-instrumentator).
+
+## Example panel query
+
+- `http_server_requests_total` — total HTTP requests by endpoint/method/status
+- `http_request_duration_seconds_count` — request duration count
+
+## Requirements
+
+- Docker Desktop
+- Python dependencies: `prometheus-fastapi-instrumentator`
