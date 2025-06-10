@@ -13,6 +13,8 @@ from auth import hash_password
 from auth import get_current_user
 import logging
 from schemas import CreditRequestResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,7 +60,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     logger.info(f"User created: {db_user.username} (id={db_user.id})")
-
     return db_user
 
 @app.post("/credit-requests/", response_model=CreditRequestResponse)
@@ -99,3 +100,5 @@ def admin_only_endpoint(current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     return {"message": "You are Admin!"}
+
+Instrumentator().instrument(app).expose(app)
