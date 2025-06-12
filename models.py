@@ -31,11 +31,20 @@ class ApprovalStage(Base):
     id = Column(Integer, primary_key=True)
     credit_request_id = Column(Integer, ForeignKey("credit_requests.id"))
     approver_id = Column(Integer, ForeignKey("users.id"))
-    stage = Column(String)  # Exemplo: analyst, manager, director
+    stage = Column(String)
     status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
     reviewed_at = Column(DateTime)
     credit_request = relationship("CreditRequest")
     approver = relationship("User")
+
+class CreditRequestWorkflow(Base):
+    __tablename__ = "credit_request_workflows"
+    id = Column(Integer, primary_key=True)
+    credit_request_id = Column(Integer, ForeignKey("credit_requests.id"))
+    stage_id = Column(Integer, ForeignKey("approval_stages.id"))
+    status = Column(String, default="pending")  # pending, approved, rejected
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
