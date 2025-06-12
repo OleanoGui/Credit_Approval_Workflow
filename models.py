@@ -46,6 +46,26 @@ class CreditRequestWorkflow(Base):
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
 
+class WorkflowStage(Base):
+    __tablename__ = "workflow_stages"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)  # Ex: 'analyst', 'manager', 'director'
+    order = Column(Integer, nullable=False)  # Ordem da etapa no workflow
+
+class CreditRequestApproval(Base):
+    __tablename__ = "credit_request_approvals"
+    id = Column(Integer, primary_key=True)
+    credit_request_id = Column(Integer, ForeignKey("credit_requests.id"))
+    stage_id = Column(Integer, ForeignKey("workflow_stages.id"))
+    status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(String, nullable=True)
+
+    credit_request = relationship("CreditRequest")
+    stage = relationship("WorkflowStage")
+    approver = relationship("User")
+
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
 

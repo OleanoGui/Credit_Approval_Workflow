@@ -63,23 +63,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     logger.info(f"User created: {db_user.username} (id={db_user.id})")
     return db_user
 
-@app.post("/credit-requests/", response_model=CreditRequestResponse)
-def create_credit_request(
-    user_id: int, 
-    amount: float, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-
-    credit_request = models.CreditRequest(user_id=user_id, amount=amount)
-    db.add(credit_request)
-    db.commit()
-    db.refresh(credit_request)
-    logger.info(f"Credit request created: {credit_request.id} by user {user_id}")
-
-    process_credit_request.delay(credit_request.id)
-    return credit_request
-
 @app.get("/credit-requests/")
 def list_credit_requests(db: Session = Depends(get_db)):
     return db.query(models.CreditRequest).all()
@@ -112,7 +95,7 @@ def create_workflow_stage(name: str, order: int, db: Session = Depends(get_db), 
     db.refresh(stage)
     return stage
 
-@app.post("/credit-requests/")
+@app.post("/credit-requests/", response_model=CreditRequestResponse)
 def create_credit_request(user_id: int, amount: float, db: Session = Depends(get_db)):
     credit_request = models.CreditRequest(user_id=user_id, amount=amount)
     db.add(credit_request)
@@ -144,7 +127,7 @@ def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
 
 @app.post("/credit-requests/{credit_request_id}/approve")
 def approve_stage(credit_request_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # Busca a próxima etapa pendente para esse pedido
+
     approval = db.query(models.CreditRequestApproval).join(models.WorkflowStage).filter(
         models.CreditRequestApproval.credit_request_id == credit_request_id,
         models.CreditRequestApproval.status == models.ApprovalStatus.PENDING,
@@ -160,8 +143,30 @@ def approve_stage(credit_request_id: int, db: Session = Depends(get_db), current
     db.commit()
     return {"detail": "Stage approved"}
 
+def notify_user(user_email, subject, message):
+    logger.info(f"Notify {user_email}: {subject} - {message}")
+
+@app.get("/credit-requests/{credit_request_id}/history")
+def approval_history(credit_request_id: int, db: Session = Depends(get_db)):
+    approvals = db.query(models.CreditRequestApproval).filter_by(credit_request_id=credit_request_id).all()
+    return [
+        {
+            "stage": approval.stage.name,
+            "status": approval.status.value,
+            "approver": approval.approver.username if approval.approver else None,
+            "reviewed_at": approval.reviewed_at,
+            "rejection_reason": getattr(approval, "rejection_reason", None)
+        }
+        for approval in approvals
+    ]
+
 @app.post("/credit-requests/{credit_request_id}/reject")
-def reject_stage(credit_request_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def reject_stage(
+    credit_request_id: int,
+    reason: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     approval = db.query(models.CreditRequestApproval).join(models.WorkflowStage).filter(
         models.CreditRequestApproval.credit_request_id == credit_request_id,
         models.CreditRequestApproval.status == models.ApprovalStatus.PENDING,
@@ -174,6 +179,7 @@ def reject_stage(credit_request_id: int, db: Session = Depends(get_db), current_
     approval.status = models.ApprovalStatus.REJECTED
     approval.approver_id = current_user.id
     approval.reviewed_at = datetime.datetime.utcnow()
+    approval.rejection_reason = reason
     db.commit()
     return {"detail": "Stage rejected"}
 
