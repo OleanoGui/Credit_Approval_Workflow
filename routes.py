@@ -123,7 +123,17 @@ def create_credit_request(user_id: int, amount: float, db: Session = Depends(get
 @app.get("/credit-requests/{credit_request_id}/approvals")
 def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
     approvals = db.query(models.CreditRequestApproval).filter_by(credit_request_id=credit_request_id).all()
-    return approvals
+    return [
+        {
+            "id": approval.id,
+            "stage": approval.stage.name,  # Mostra o nome da etapa
+            "status": approval.status.value,
+            "approver": approval.approver.username if approval.approver else None,
+            "reviewed_at": approval.reviewed_at,
+            "rejection_reason": approval.rejection_reason
+        }
+        for approval in approvals
+    ]
 
 @app.post("/credit-requests/{credit_request_id}/approve")
 def approve_stage(credit_request_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -182,5 +192,10 @@ def reject_stage(
     approval.rejection_reason = reason
     db.commit()
     return {"detail": "Stage rejected"}
+
+@app.get("/users/")
+def list_users(db: Session = Depends(get_db)):
+    users = db.query(models.User).all()
+    return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
 
 Instrumentator().instrument(app).expose(app)
