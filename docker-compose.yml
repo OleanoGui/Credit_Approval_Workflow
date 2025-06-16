@@ -1,16 +1,30 @@
-version: '3.7'
+version: "3.9"
 
 services:
-  prometheus:
-    image: prom/prometheus
+  backend:
+    build: .
+    command: uvicorn routes:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - .:/app
     ports:
-      - "9090:9090"
-
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3001:3000"
+      - "8000:8000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - DATABASE_URL=sqlite:///./credit_approval.db
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./frontend
+    command: npm start
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"

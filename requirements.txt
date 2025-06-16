@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+pydantic
+python-jose
+passlib[bcrypt]
+prometheus-fastapi-instrumentator
+celery
+redis
+python-multipart
