@@ -72,3 +72,31 @@ This project exposes application metrics at `/metrics` using [prometheus_fastapi
 
 - Docker Desktop
 - Python dependencies: `prometheus-fastapi-instrumentator`
+
+## 🧪 Running Tests
+
+This project includes unit tests for the main modules:
+
+### Auth Tests (`tests/test_auth.py`)
+- Password hashing and verification
+- JWT access token creation
+- User authentication (success and failure cases)
+
+### Models Tests (`tests/test_models.py`)
+- User creation and persistence
+- Credit request creation and default status
+
+### Routes Tests (`tests/test_routes.py`)
+- (Add a brief description of your route tests here, for example:)
+- Endpoint responses and status codes
+- Authentication and authorization flows
+- Business logic for credit request approval/rejection
+
+### How to Run All Tests
+
+From the project root, run:
+```bash
+pytest
+```
+
+All tests are located in the `tests/` directory and use an in-memory SQLite database for isolation and speed.
