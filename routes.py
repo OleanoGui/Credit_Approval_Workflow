@@ -198,4 +198,17 @@ def list_users(db: Session = Depends(get_db)):
     users = db.query(models.User).all()
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
 
+@app.get("/dashboard/summary")
+def dashboard_summary(db: Session = Depends(get_db)):
+    total_requests = db.query(models.CreditRequest).count()
+    pending = db.query(models.CreditRequest).filter(models.CreditRequest.status == models.ApprovalStatus.PENDING).count()
+    approved = db.query(models.CreditRequest).filter(models.CreditRequest.status == models.ApprovalStatus.APPROVED).count()
+    rejected = db.query(models.CreditRequest).filter(models.CreditRequest.status == models.ApprovalStatus.REJECTED).count()
+    return {
+        "total_requests": total_requests,
+        "pending": pending,
+        "approved": approved,
+        "rejected": rejected
+    }
+
 Instrumentator().instrument(app).expose(app)
