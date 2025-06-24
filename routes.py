@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
 from schemas import UserResponse
-from tasks import process_credit_request
 from fastapi.security import OAuth2PasswordRequestForm
 from auth import authenticate_user, create_access_token
 from datetime import timedelta
@@ -17,7 +16,7 @@ from schemas import CreditRequestResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-import aioredis
+import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
 
 
