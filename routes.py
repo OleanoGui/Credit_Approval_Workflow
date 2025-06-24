@@ -15,6 +15,10 @@ from auth import get_current_user
 import logging
 from schemas import CreditRequestResponse
 from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+import aioredis
+from fastapi_cache.decorator import cache
 
 
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +68,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @app.get("/credit-requests/")
+@cache(expire=30)
 def list_credit_requests(db: Session = Depends(get_db)):
     return db.query(models.CreditRequest).all()
 
@@ -194,11 +199,13 @@ def reject_stage(
     return {"detail": "Stage rejected"}
 
 @app.get("/users/")
+@cache(expire=60)
 def list_users(db: Session = Depends(get_db)):
     users = db.query(models.User).all()
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
 
 @app.get("/dashboard/summary")
+@cache(expire=60)
 def dashboard_summary(db: Session = Depends(get_db)):
     total_requests = db.query(models.CreditRequest).count()
     pending = db.query(models.CreditRequest).filter(models.CreditRequest.status == models.ApprovalStatus.PENDING).count()
@@ -210,5 +217,10 @@ def dashboard_summary(db: Session = Depends(get_db)):
         "approved": approved,
         "rejected": rejected
     }
+
+@app.on_event("startup")
+async def startup():
+    redis = aioredis.from_url("redis://localhost:6379", encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 Instrumentator().instrument(app).expose(app)
