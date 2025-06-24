@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  backend:
+    build: .
+    environment:
+      - ENV=production
+      - DATABASE_URL=sqlite:///./credit_approval.db
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - redis
+  frontend:
+    build: ./frontend
+    environment:
+      - ENV=production
+    ports:
+      - "3000:3000"
+    restart: always
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: always
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: always
