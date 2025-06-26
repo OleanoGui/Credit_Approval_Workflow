@@ -11,6 +11,8 @@ from datetime import timedelta
 from pydantic import BaseModel
 from auth import hash_password
 from auth import get_current_user
+from typing import Optional
+from fastapi import Query
 import logging
 from schemas import CreditRequestResponse
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -68,8 +70,23 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @app.get("/credit-requests/")
 @cache(expire=30)
-def list_credit_requests(db: Session = Depends(get_db)):
-    return db.query(models.CreditRequest).all()
+def list_credit_requests(
+    db: Session = Depends(get_db),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    user_id: Optional[int] = Query(None, description="Filter by user ID"),
+    start_date: Optional[datetime.date] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)")
+):
+    query = db.query(models.CreditRequest)
+    if status:
+        query = query.filter(models.CreditRequest.status == status)
+    if user_id:
+        query = query.filter(models.CreditRequest.user_id == user_id)
+    if start_date:
+        query = query.filter(models.CreditRequest.created_at >= start_date)
+    if end_date:
+        query = query.filter(models.CreditRequest.created_at <= end_date)
+    return [schemas.CreditRequestResponse.model_validate(r) for r in query.all()]
 
 @app.get("/credit-requests/{request_id}")
 def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
@@ -130,7 +147,7 @@ def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
     return [
         {
             "id": approval.id,
-            "stage": approval.stage.name,  # Mostra o nome da etapa
+            "stage": approval.stage.name,
             "status": approval.status.value,
             "approver": approval.approver.username if approval.approver else None,
             "reviewed_at": approval.reviewed_at,
