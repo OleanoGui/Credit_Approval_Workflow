@@ -86,7 +86,8 @@ def list_credit_requests(
         query = query.filter(models.CreditRequest.created_at >= start_date)
     if end_date:
         query = query.filter(models.CreditRequest.created_at <= end_date)
-    return [schemas.CreditRequestResponse.model_validate(r) for r in query.all()]
+    query = query.order_by(models.CreditRequest.created_at.desc())
+    return [CreditRequestResponse.model_validate(r) for r in query.all()]
 
 @app.get("/credit-requests/{request_id}")
 def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
