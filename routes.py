@@ -77,6 +77,7 @@ def list_credit_requests(
     start_date: Optional[datetime.date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)")
 ):
+    logger.info("Listagem de solicitações de crédito acessada.")
     query = db.query(models.CreditRequest)
     if status:
         query = query.filter(models.CreditRequest.status == status)
