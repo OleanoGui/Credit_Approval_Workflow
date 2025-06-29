@@ -125,6 +125,8 @@ def create_credit_request(user_id: int, amount: float, db: Session = Depends(get
     db.commit()
     db.refresh(credit_request)
 
+    logger.info(f"Credit request created: id={credit_request.id}, user_id={user_id}, amount={amount}")
+
     if amount <= 10000:
         stage_names = ['analyst']
     elif amount <= 50000:
