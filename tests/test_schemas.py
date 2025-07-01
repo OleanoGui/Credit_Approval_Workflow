@@ -4,16 +4,19 @@ from schemas import UserCreate, CreditRequestCreate, CreditRequestResponse
 from datetime import datetime
 
 def test_user_create_schema_valid():
+    print("Running: test_user_create_schema_valid")
     data = {"username": "user1", "role": "admin", "password": "pw"}
     user = UserCreate(**data)
     assert user.username == "user1"
     assert user.role == "admin"
 
 def test_user_create_schema_invalid():
+    print("Running: test_user_create_schema_invalid")
     with pytest.raises(TypeError):
-        UserCreate(username="user1", password="pw")  # missing role
+        UserCreate(username="user1", password="pw")
 
 def test_credit_request_response_schema():
+    print("Running: test_credit_request_response_schema")
     now = datetime.utcnow()
     data = {
         "id": 1,
