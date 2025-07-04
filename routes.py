@@ -75,7 +75,8 @@ def list_credit_requests(
     status: Optional[str] = Query(None, description="Filter by status"),
     user_id: Optional[int] = Query(None, description="Filter by user ID"),
     start_date: Optional[datetime.date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)"),
+    limit: int = Query(20, ge=1, le=100, description="Limit number of results")  # <-- Adicionado
 ):
     logger.info("Listagem de solicitações de crédito acessada.")
     query = db.query(models.CreditRequest)
@@ -87,7 +88,7 @@ def list_credit_requests(
         query = query.filter(models.CreditRequest.created_at >= start_date)
     if end_date:
         query = query.filter(models.CreditRequest.created_at <= end_date)
-    query = query.order_by(models.CreditRequest.created_at.desc())
+    query = query.order_by(models.CreditRequest.created_at.desc()).limit(limit)
     return [CreditRequestResponse.model_validate(r) for r in query.all()]
 
 @app.get("/credit-requests/{request_id}")
