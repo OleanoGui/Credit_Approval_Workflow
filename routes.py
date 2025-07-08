@@ -239,6 +239,10 @@ def dashboard_summary(db: Session = Depends(get_db)):
         "rejected": rejected
     }
 
+@app.get("/health")
+def healthcheck():
+    return {"status": "ok"}
+
 @app.on_event("startup")
 async def startup():
     redis = aioredis.from_url("redis://localhost:6379", encoding="utf8", decode_responses=True)
