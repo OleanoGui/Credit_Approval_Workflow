@@ -35,6 +35,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+ROLE_PERMISSIONS = {
+    "admin": {"create_user", "approve", "reject", "view_all"},
+    "manager": {"approve", "reject", "view_all"},
+    "analyst": {"approve", "reject", "view_own"},
+}
+
+def has_permission(user, permission):
+    return permission in ROLE_PERMISSIONS.get(user.role, set())
+
 def get_db():
     db = SessionLocal()
     try:
@@ -162,7 +171,13 @@ def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
     ]
 
 @app.post("/credit-requests/{credit_request_id}/approve")
-def approve_stage(credit_request_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def approve_stage(
+    credit_request_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)):
+
+    if not has_permission(current_user, "approve"):
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     approval = db.query(models.CreditRequestApproval).join(models.WorkflowStage).filter(
         models.CreditRequestApproval.credit_request_id == credit_request_id,
@@ -221,7 +236,12 @@ def reject_stage(
 
 @app.get("/users/")
 @cache(expire=60)
-def list_users(db: Session = Depends(get_db)):
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not has_permission(current_user, "view_all"):
+        raise HTTPException(status_code=403, detail="Not authorized")
     users = db.query(models.User).all()
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
 
