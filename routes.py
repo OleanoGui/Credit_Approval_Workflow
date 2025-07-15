@@ -85,6 +85,8 @@ def list_credit_requests(
     user_id: Optional[int] = Query(None, description="Filter by user ID"),
     start_date: Optional[datetime.date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)"),
+    min_amount: Optional[float] = Query(None, description="Minimum amount"),
+    max_amount: Optional[float] = Query(None, description="Maximum amount"),
     limit: int = Query(20, ge=1, le=100, description="Limit number of results")  # <-- Adicionado
 ):
     logger.info("Listagem de solicitações de crédito acessada.")
@@ -97,6 +99,10 @@ def list_credit_requests(
         query = query.filter(models.CreditRequest.created_at >= start_date)
     if end_date:
         query = query.filter(models.CreditRequest.created_at <= end_date)
+    if min_amount is not None:
+        query = query.filter(models.CreditRequest.amount >= min_amount)
+    if max_amount is not None:
+        query = query.filter(models.CreditRequest.amount <= max_amount)
     query = query.order_by(models.CreditRequest.created_at.desc()).limit(limit)
     return [CreditRequestResponse.model_validate(r) for r in query.all()]
 
