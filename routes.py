@@ -29,7 +29,7 @@ app = FastAPI()
 
 api_v1 = APIRouter()
 
-@api_v1.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
