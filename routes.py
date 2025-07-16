@@ -20,14 +20,16 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
-
+from fastapi import APIRouter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-app.add_middleware(
+api_v1 = APIRouter()
+
+@api_v1.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -51,7 +53,7 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/token")
+@api_v1.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -67,7 +69,7 @@ class UserCreate(BaseModel):
     role: str
     password: str
 
-@app.post("/users/", response_model=UserResponse)
+@api_v1.post("/users/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     hashed_pw = hash_password(user.password)
     db_user = models.User(username=user.username, role=user.role, password=hashed_pw)
@@ -77,7 +79,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     logger.info(f"User created: {db_user.username} (id={db_user.id})")
     return db_user
 
-@app.get("/credit-requests/")
+@api_v1.get("/credit-requests/")
 @cache(expire=30)
 def list_credit_requests(
     db: Session = Depends(get_db),
@@ -106,7 +108,7 @@ def list_credit_requests(
     query = query.order_by(models.CreditRequest.created_at.desc()).limit(limit)
     return [CreditRequestResponse.model_validate(r) for r in query.all()]
 
-@app.get("/credit-requests/{request_id}")
+@api_v1.get("/credit-requests/{request_id}")
 def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
     credit_request = db.query(models.CreditRequest).filter(models.CreditRequest.id == request_id).first()
     if not credit_request:
@@ -118,13 +120,13 @@ def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
         "user_id": credit_request.user_id
     }
 
-@app.get("/admin-only/")
+@api_v1.get("/admin-only/")
 def admin_only_endpoint(current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     return {"message": "You are Admin!"}
 
-@app.post("/workflow-stages/")
+@api_v1.post("/workflow-stages/")
 def create_workflow_stage(name: str, order: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -134,7 +136,7 @@ def create_workflow_stage(name: str, order: int, db: Session = Depends(get_db), 
     db.refresh(stage)
     return stage
 
-@app.post("/credit-requests/", response_model=CreditRequestResponse)
+@api_v1.post("/credit-requests/", response_model=CreditRequestResponse)
 def create_credit_request(user_id: int, amount: float, db: Session = Depends(get_db)):
     credit_request = models.CreditRequest(user_id=user_id, amount=amount)
     db.add(credit_request)
@@ -161,7 +163,7 @@ def create_credit_request(user_id: int, amount: float, db: Session = Depends(get
     db.commit()
     return credit_request
 
-@app.get("/credit-requests/{credit_request_id}/approvals")
+@api_v1.get("/credit-requests/{credit_request_id}/approvals")
 def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
     approvals = db.query(models.CreditRequestApproval).filter_by(credit_request_id=credit_request_id).all()
     return [
@@ -176,7 +178,7 @@ def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
         for approval in approvals
     ]
 
-@app.post("/credit-requests/{credit_request_id}/approve")
+@api_v1.post("/credit-requests/{credit_request_id}/approve")
 def approve_stage(
     credit_request_id: int, 
     db: Session = Depends(get_db),
@@ -203,7 +205,7 @@ def approve_stage(
 def notify_user(user_email, subject, message):
     logger.info(f"Notify {user_email}: {subject} - {message}")
 
-@app.get("/credit-requests/{credit_request_id}/history")
+@api_v1.get("/credit-requests/{credit_request_id}/history")
 def approval_history(credit_request_id: int, db: Session = Depends(get_db)):
     approvals = db.query(models.CreditRequestApproval).filter_by(credit_request_id=credit_request_id).all()
     return [
@@ -217,7 +219,7 @@ def approval_history(credit_request_id: int, db: Session = Depends(get_db)):
         for approval in approvals
     ]
 
-@app.post("/credit-requests/{credit_request_id}/reject")
+@api_v1.post("/credit-requests/{credit_request_id}/reject")
 def reject_stage(
     credit_request_id: int,
     reason: str,
@@ -240,7 +242,7 @@ def reject_stage(
     db.commit()
     return {"detail": "Stage rejected"}
 
-@app.get("/users/")
+@api_v1.get("/users/")
 @cache(expire=60)
 def list_users(
     db: Session = Depends(get_db),
@@ -251,7 +253,7 @@ def list_users(
     users = db.query(models.User).all()
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
 
-@app.get("/dashboard/summary")
+@api_v1.get("/dashboard/summary")
 @cache(expire=60)
 def dashboard_summary(db: Session = Depends(get_db)):
     total_requests = db.query(models.CreditRequest).count()
@@ -265,13 +267,14 @@ def dashboard_summary(db: Session = Depends(get_db)):
         "rejected": rejected
     }
 
-@app.get("/health")
+@api_v1.get("/health")
 def healthcheck():
     return {"status": "ok"}
 
-@app.on_event("startup")
+@api_v1.on_event("startup")
 async def startup():
     redis = aioredis.from_url("redis://localhost:6379", encoding="utf8", decode_responses=True)
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 Instrumentator().instrument(app).expose(app)
+app.include_router(api_v1, prefix="/api/v1")
