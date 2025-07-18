@@ -21,6 +21,7 @@ from fastapi_cache.backends.redis import RedisBackend
 import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
 from fastapi import APIRouter
+from fastapi_cache.decorator import cache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @api_v1.get("/credit-requests/")
-@cache(expire=30)
+@cache(expire=30, namespace=lambda db, status, user_id, start_date, end_date, min_amount, max_amount, limit, current_user=None: f"user:{current_user.id}-status:{status}-min:{min_amount}-max:{max_amount}-limit:{limit}")
 def list_credit_requests(
     db: Session = Depends(get_db),
     status: Optional[str] = Query(None, description="Filter by status"),
@@ -89,7 +90,8 @@ def list_credit_requests(
     end_date: Optional[datetime.date] = Query(None, description="End date (YYYY-MM-DD)"),
     min_amount: Optional[float] = Query(None, description="Minimum amount"),
     max_amount: Optional[float] = Query(None, description="Maximum amount"),
-    limit: int = Query(20, ge=1, le=100, description="Limit number of results")  # <-- Adicionado
+    limit: int = Query(20, ge=1, le=100, description="Limit number of results"),
+    current_user: models.User = Depends(get_current_user)
 ):
     logger.info("Listagem de solicitações de crédito acessada.")
     query = db.query(models.CreditRequest)
