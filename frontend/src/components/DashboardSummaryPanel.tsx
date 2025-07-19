@@ -17,17 +17,21 @@ export default function DashboardSummaryPanel() {
       .catch(() => setSummary(null));
   }, []);
 
-  if (!summary) return <div>Loading dashboard summary...</div>;
+if (!summary) return (
+  <div role="status" aria-live="polite">
+    Loading dashboard summary...
+  </div>
+);
 
-  return (
-    <div>
-      <h3>Dashboard Summary</h3>
-      <ul>
-        <li>Total Requests: {summary.total_requests}</li>
-        <li>Pending: {summary.pending}</li>
-        <li>Approved: {summary.approved}</li>
-        <li>Rejected: {summary.rejected}</li>
-      </ul>
-    </div>
-  );
+return (
+  <section aria-labelledby="dashboard-summary-title">
+    <h3 id="dashboard-summary-title">Dashboard Summary</h3>
+    <ul>
+      <li>Total Requests: {summary.total_requests}</li>
+      <li>Pending: {summary.pending}</li>
+      <li>Approved: {summary.approved}</li>
+      <li>Rejected: {summary.rejected}</li>
+    </ul>
+  </section>
+);
 }
