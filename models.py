@@ -20,19 +20,19 @@ class User(Base):
 class CreditRequest(Base):
     __tablename__ = "credit_requests"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     amount = Column(Float, nullable=False)
-    status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # <-- CORRIGIDO
+    status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     user = relationship("User")
 
 class ApprovalStage(Base):
     __tablename__ = "approval_stages"
     id = Column(Integer, primary_key=True)
     credit_request_id = Column(Integer, ForeignKey("credit_requests.id"))
-    approver_id = Column(Integer, ForeignKey("users.id"))
+    approver_id = Column(Integer, ForeignKey("users.id"), index=True)
     stage = Column(String)
-    status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
+    status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True)
     reviewed_at = Column(DateTime)
     credit_request = relationship("CreditRequest")
     approver = relationship("User")
