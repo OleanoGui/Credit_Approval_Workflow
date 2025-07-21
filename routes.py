@@ -21,13 +21,15 @@ from fastapi_cache.backends.redis import RedisBackend
 import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
 from fastapi import APIRouter
-from fastapi_cache.decorator import cache
+import os
+import jwt
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "refresh_secret")
 
 app = FastAPI()
-
 api_v1 = APIRouter()
 
 app.add_middleware(
@@ -55,30 +57,53 @@ def get_db():
         db.close()
 
 @api_v1.post("/token")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=30)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(days=7)
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+def create_access_token(data: dict, expires_delta: timedelta):
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + expires_delta
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
+    return encoded_jwt
+
+def create_refresh_token(data: dict, expires_delta: timedelta):
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + expires_delta
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm="HS256")
+    return encoded_jwt
 
 class UserCreate(BaseModel):
     username: str
     role: str
     password: str
 
-@api_v1.post("/users/", response_model=UserResponse)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    hashed_pw = hash_password(user.password)
-    db_user = models.User(username=user.username, role=user.role, password=hashed_pw)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    logger.info(f"User created: {db_user.username} (id={db_user.id})")
-    return db_user
+@api_v1.post("/refresh")
+def refresh_token(refresh_token: str):
+    try:
+        payload = jwt.decode(refresh_token, REFRESH_SECRET_KEY, algorithms=["HS256"])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        new_access_token = create_access_token(
+            data={"sub": username},
+            expires_delta=timedelta(minutes=30)
+        )
+        return {"access_token": new_access_token, "token_type": "bearer"}
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 @api_v1.get("/credit-requests/")
 @cache(expire=30, namespace=lambda db, status, user_id, start_date, end_date, min_amount, max_amount, limit, current_user=None: f"user:{current_user.id}-status:{status}-min:{min_amount}-max:{max_amount}-limit:{limit}")
