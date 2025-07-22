@@ -52,6 +52,18 @@ def get_db():
     finally:
         db.close()
 
+
+def log_audit(db, user_id, action, credit_request_id, details=""):
+    from models import AuditLog
+    audit = AuditLog(
+        user_id=user_id,
+        action=action,
+        credit_request_id=credit_request_id,
+        details=details
+    )
+    db.add(audit)
+    db.commit()
+
 @api_v1.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
@@ -223,6 +235,7 @@ def approve_stage(
     approval.approver_id = current_user.id
     approval.reviewed_at = datetime.datetime.utcnow()
     db.commit()
+    log_audit(db, current_user.id, "approve", credit_request_id, "Stage approved")
     return {"detail": "Stage approved"}
 
 def notify_user(user_email, subject, message):
@@ -263,6 +276,7 @@ def reject_stage(
     approval.reviewed_at = datetime.datetime.utcnow()
     approval.rejection_reason = reason
     db.commit()
+    log_audit(db, current_user.id, "reject", credit_request_id, f"Reason: {reason}")
     return {"detail": "Stage rejected"}
 
 @api_v1.get("/users/")

@@ -66,6 +66,17 @@ class CreditRequestApproval(Base):
     stage = relationship("WorkflowStage")
     approver = relationship("User")
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    action = Column(String, nullable=False)
+    credit_request_id = Column(Integer, ForeignKey("credit_requests.id"), index=True)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    details = Column(String)
+    user = relationship("User")
+    credit_request = relationship("CreditRequest")
+
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
 
