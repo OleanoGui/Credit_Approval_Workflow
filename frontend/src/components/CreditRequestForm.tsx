@@ -19,26 +19,45 @@ export default function CreditRequestForm() {
     }
   };
 
-  return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
-      <TextField
-        label="User ID"
-        type="number"
-        value={userId}
-        onChange={e => setUserId(Number(e.target.value))}
-        required
-        sx={{ mr: 2 }}
-      />
-      <TextField
-        label="Amount"
-        type="number"
-        value={amount}
-        onChange={e => setAmount(Number(e.target.value))}
-        required
-        sx={{ mr: 2 }}
-      />
-      <Button type="submit" variant="contained">Create Credit Request</Button>
-      {result && <div style={{ marginTop: 10 }}>{result}</div>}
-    </Box>
-  );
+return (
+  <Box
+    component="form"
+    onSubmit={handleSubmit}
+    sx={{ mb: 2 }}
+    aria-labelledby="credit-request-form-title"
+    role="form"
+  >
+    <h2 id="credit-request-form-title">Create Credit Request</h2>
+    <TextField
+      label="User ID"
+      type="number"
+      value={userId}
+      onChange={e => setUserId(Number(e.target.value))}
+      required
+      sx={{ mr: 2 }}
+      inputProps={{ 'aria-label': 'User ID' }}
+    />
+    <TextField
+      label="Amount"
+      type="number"
+      value={amount}
+      onChange={e => setAmount(Number(e.target.value))}
+      required
+      sx={{ mr: 2 }}
+      inputProps={{ 'aria-label': 'Amount' }}
+    />
+    <Button type="submit" variant="contained" aria-label="Create Credit Request">
+      Create Credit Request
+    </Button>
+    {result && (
+      <div
+        style={{ marginTop: 10 }}
+        role="status"
+        aria-live="polite"
+      >
+        {result}
+      </div>
+    )}
+  </Box>
+);
 }

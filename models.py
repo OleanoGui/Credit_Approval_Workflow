@@ -42,15 +42,15 @@ class CreditRequestWorkflow(Base):
     id = Column(Integer, primary_key=True)
     credit_request_id = Column(Integer, ForeignKey("credit_requests.id"))
     stage_id = Column(Integer, ForeignKey("approval_stages.id"))
-    status = Column(String, default="pending")  # pending, approved, rejected
+    status = Column(String, default="pending")
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
 
 class WorkflowStage(Base):
     __tablename__ = "workflow_stages"
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)  # Ex: 'analyst', 'manager', 'director'
-    order = Column(Integer, nullable=False)  # Ordem da etapa no workflow
+    name = Column(String, nullable=False) 
+    order = Column(Integer, nullable=False)
 
 class CreditRequestApproval(Base):
     __tablename__ = "credit_request_approvals"
