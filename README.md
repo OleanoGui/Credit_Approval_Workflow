@@ -31,26 +31,43 @@ Each approver receives a notification and can approve or reject
 If all approval stages are completed, the credit is granted
 The user is notified of the final status
 
+🔹 Key Features
 
+- **API Versioning:** All endpoints are under `/api/v1/`
+- **Advanced Filtering & Pagination:** Filter requests by status, user, date, amount, etc.
+- **RBAC:** Role-based access control for admin, manager, analyst
+- **Smart Caching:** Per-user and per-query parameter cache for performance
+- **Audit Logging:** All important actions (approve, reject, create) are logged
+- **Notifications:** Email notifications sent to users about request status
+- **Backup & Restore:** Automated database backup routines
+- **Observability:** Prometheus metrics exposed at `/metrics`, with alerting rules
+- **Accessibility:** Frontend components follow accessibility best practices
+- **Frontend Dashboard:** Metrics charts with filters and drill-down
+- **CI/CD:** Automated pipelines for testing, linting, and deployment
 
 🔹 Project Structure
 
-📂 models.py → Table definitions (CreditRequest, User, ApprovalStage)
-📂 routes.py → API routes to create requests and check status
-📂 tasks.py → Asynchronous processing using Celery
-📂 messaging.py → Communication between services using RabbitMQ/Kafka
-📂 auth.py → User authentication and permission control
+📂 models.py      # Table definitions (User, CreditRequest, ApprovalStage, AuditLog)
+📂 routes.py      # API endpoints (credit requests, approvals, authentication)
+📂 tasks.py       # Asynchronous processing with Celery
+📂 messaging.py   # Service communication (RabbitMQ/Kafka)
+📂 auth.py        # Authentication and permission control
+📂 utils.py       # Utility functions (email notifications, backup)
+📂 tests/         # Unit and integration tests
+📂 frontend/      # React frontend (Material UI, Axios)
+
 
 🔹 Frontend
 
 The frontend was developed in React, using Material UI for the interface and Axios for backend communication.
 
-Main features:
-- Login screen with JWT authentication
-- User registration
-- Creation and tracking of credit requests
-- Viewing the status of requests
-- Different screens and permissions according to user role (admin, manager, user)
+- **Login screen** with JWT authentication
+- **User registration**
+- **Create and track credit requests**
+- **Status viewing and filtering**
+- **Role-based screens and permissions**
+- **Accessible forms and dashboards**
+- **Metrics dashboard** with filters and drill-down charts
 
 To run the frontend locally:
 ```bash
@@ -61,22 +78,32 @@ npm start
 
 ## 📊 Observability: Prometheus & Grafana
 
-This project exposes application metrics at `/metrics` using [prometheus_fastapi_instrumentator](https://github.com/trallard/prometheus-fastapi-instrumentator).
+- Metrics exposed at `/metrics` via [prometheus_fastapi_instrumentator](https://github.com/trallard/prometheus-fastapi-instrumentator)
+- Example queries:
+  - `http_server_requests_total` — total HTTP requests by endpoint/method/status
+  - `http_request_duration_seconds_count` — request duration count
+- Alerting rules in `alert.rules.yml` (latency, CPU, memory, etc.)
 
-## Example panel query
+🔒 Authentication & Security
 
-- `http_server_requests_total` — total HTTP requests by endpoint/method/status
-- `http_request_duration_seconds_count` — request duration count
+- **Obtain token:**  
+  `POST /api/v1/token` with username and password
+- **Use token:**  
+  Pass `Authorization: Bearer <token>` header for protected endpoints
 
-## 📊 Example Prometheus Metrics Displayed
+**Example:**
+```bash
+# Get token
+curl -X POST "http://localhost:8000/api/v1/token" -d "username=admin&password=yourpassword"
 
-- Total requests per endpoint/method/status (2xx, 4xx, 5xx)
-- Request duration histograms
+# Use token
+curl -H "Authorization: Bearer <access_token>" "http://localhost:8000/api/v1/credit-requests/"
+```
 
-## Requirements
-
-- Docker Desktop
-- Python dependencies: `prometheus-fastapi-instrumentator`
+- **Refresh token:**  
+  `POST /api/v1/refresh` with refresh token to obtain new access token
+- **Logout:**  
+  Secure logout with token blacklist
 
 ## 🧪 Running Tests
 
@@ -105,3 +132,14 @@ pytest
 ```
 
 All tests are located in the `tests/` directory and use an in-memory SQLite database for isolation and speed.
+
+🛠️ CI/CD
+
+- GitHub Actions pipeline runs tests, lint, and deploys on push/pull request
+- Workflow file: `.github/workflows/ci.yml`
+
+
+🧩 Extensibility
+
+- Modular codebase for easy addition of new approval stages, notification channels, or integrations
+- Ready for production deployment with Docker
