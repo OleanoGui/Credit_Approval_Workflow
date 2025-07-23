@@ -1,6 +1,17 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from pydantic import BaseModel, Field, validator
+
+class CreditRequestCreate(BaseModel):
+    user_id: int = Field(..., gt=0, description="User ID must be positive")
+    amount: float = Field(..., gt=0, description="Amount must be greater than zero")
+
+    @validator("amount")
+    def validate_amount(cls, value):
+        if value < 100:
+            raise ValueError("Minimum credit request amount is 100")
+        return value
 
 class UserCreate(BaseModel):
     username: str
