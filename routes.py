@@ -19,6 +19,8 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
+from utils import get_email_template
+from notifications import send_email
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -236,6 +238,10 @@ def approve_stage(
     approval.reviewed_at = datetime.datetime.utcnow()
     db.commit()
     log_audit(db, current_user.id, "approve", credit_request_id, "Stage approved")
+    credit_request = db.query(models.CreditRequest).filter_by(id=credit_request_id).first()
+    user = db.query(models.User).filter_by(id=credit_request.user_id).first()
+    template = get_email_template("approved", credit_request_id)
+    send_email(user.email, template["subject"], template["body"])
     return {"detail": "Stage approved"}
 
 def notify_user(user_email, subject, message):
@@ -277,6 +283,10 @@ def reject_stage(
     approval.rejection_reason = reason
     db.commit()
     log_audit(db, current_user.id, "reject", credit_request_id, f"Reason: {reason}")
+    credit_request = db.query(models.CreditRequest).filter_by(id=credit_request_id).first()
+    user = db.query(models.User).filter_by(id=credit_request.user_id).first()
+    template = get_email_template("reject", credit_request_id)
+    send_email(user.email, template["subject"], template["body"])
     return {"detail": "Stage rejected"}
 
 @api_v1.get("/users/")
