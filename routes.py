@@ -285,7 +285,7 @@ def reject_stage(
     log_audit(db, current_user.id, "reject", credit_request_id, f"Reason: {reason}")
     credit_request = db.query(models.CreditRequest).filter_by(id=credit_request_id).first()
     user = db.query(models.User).filter_by(id=credit_request.user_id).first()
-    template = get_email_template("reject", credit_request_id)
+    template = get_email_template("rejected", credit_request_id)
     send_email(user.email, template["subject"], template["body"])
     return {"detail": "Stage rejected"}
 
