@@ -11,3 +11,12 @@ def send_email(to_email, subject, body, from_email="no-reply@creditworkflow.com"
         server.starttls()
         server.login("usuario", "senha")
         server.sendmail(from_email, [to_email], msg.as_string())
+
+def send_sms(phone_number, message):
+    print(f"SMS to {phone_number}: {message}")
+
+def send_notification(user, subject, message):
+    if getattr(user, "notify_email", False) and getattr(user, "email", None):
+        send_email(user.email, subject, message)
+    if getattr(user, "notify_sms", False) and getattr(user, "phone", None):
+        send_sms(user.phone, message)

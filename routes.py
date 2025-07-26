@@ -14,6 +14,7 @@ from database import SessionLocal
 from auth import authenticate_user, create_access_token, get_current_user
 from pydantic import BaseModel
 from schemas import CreditRequestResponse
+import schemas
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -225,6 +226,17 @@ def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
         }
         for approval in approvals
     ]
+
+
+@api_v1.put("/users/{user_id}/preferences")
+def update_preferences(user_id: int, preferences: schemas.UserPreferences, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    user = db.query(models.User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.notify_email = preferences.notify_email
+    user.notify_sms = preferences.notify_sms
+    db.commit()
+    return {"detail": "Preferences updated"}
 
 @api_v1.post("/credit-requests/{credit_request_id}/approve")
 def approve_stage(

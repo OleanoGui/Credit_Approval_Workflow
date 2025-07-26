@@ -13,10 +13,15 @@ class CreditRequestCreate(BaseModel):
             raise ValueError("Minimum credit request amount is 100")
         return value
 
+class UserPreferences(BaseModel):
+    notify_email: bool = True
+    notify_sms: bool = False
+
 class UserCreate(BaseModel):
     username: str
     role: str
     password: str
+    preferences: UserPreferences = UserPreferences()
 
 class UserResponse(BaseModel):
     id: int

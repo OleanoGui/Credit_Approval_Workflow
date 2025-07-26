@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base, relationship
 import enum
 import datetime
 from database import engine, Base
+from sqlalchemy import Boolean
 
 
 class ApprovalStatus(enum.Enum):
@@ -16,6 +17,8 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     role = Column(String, nullable=False)
     password = Column(String, nullable=False)
+    notify_email = Column(Boolean, default=True)
+    notify_sms = Column(Boolean, default=False)
 
 class CreditRequest(Base):
     __tablename__ = "credit_requests"
