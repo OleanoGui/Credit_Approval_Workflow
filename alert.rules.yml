@@ -28,6 +28,7 @@ groups:
         annotations:
           summary: "High memory usage in backend"
           description: "Memory usage is above 80% for more than 2 minutes."
+      
       - alert: HighErrorRate
         expr: sum(rate(http_server_requests_total{status=~"5.."}[5m])) by (handler) > 1
         for: 2m
@@ -36,6 +37,7 @@ groups:
         annotations:
           summary: "High error rate on {{ $labels.handler }}"
           description: "More than 1 error per second (5xx) on handler {{ $labels.handler }} in the last 2 minutes."
+     
       - alert: ApiDown
         expr: up{job="fastapi"} == 0
         for: 1m
@@ -44,6 +46,7 @@ groups:
         annotations:
           summary: "API is down"
           description: "No metrics scraped from FastAPI in the last minute."
+      
       - alert: HighAppCPU
         expr: app_cpu_usage_percent > 80
         for: 2m
@@ -52,6 +55,7 @@ groups:
         annotations:
           summary: "High CPU usage (custom metric)"
           description: "CPU usage reported by app is above 80%."
+      
       - alert: HighAppMemory
         expr: app_memory_usage_mb > 500
         for: 2m
@@ -60,3 +64,30 @@ groups:
         annotations:
           summary: "High memory usage (custom metric)"
           description: "Memory usage reported by app is above 500MB."
+      
+      - alert: CriticalHighAppCPU
+        expr: app_cpu_usage_percent > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical: High CPU usage (custom metric)"
+          description: "CPU usage reported by app is above 90%."
+
+      - alert: CriticalHighAppMemory
+        expr: app_memory_usage_mb > 800
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical: High memory usage (custom metric)"
+          description: "Memory usage reported by app is above 800MB."
+
+      - alert: CriticalHighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 3
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical: Very high API latency"
+          description: "The 95th percentile latency is above 3 seconds in the last 5 minutes."
