@@ -18,7 +18,6 @@ function parseRequests(metricsText) {
   const requests = {};
   lines.forEach(line => {
     if (line.startsWith('http_requests_total')) {
-      // Exemplo: http_requests_total{handler="/token",method="POST",status="2xx"} 2.0
       const match = line.match(/handler="([^"]+)",method="([^"]+)",status="([^"]+)"} ([\d.]+)/);
       if (match) {
         const handler = match[1];
