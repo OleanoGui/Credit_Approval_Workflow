@@ -44,7 +44,7 @@ groups:
         annotations:
           summary: "API is down"
           description: "No metrics scraped from FastAPI in the last minute."
-                - alert: HighAppCPU
+      - alert: HighAppCPU
         expr: app_cpu_usage_percent > 80
         for: 2m
         labels:
