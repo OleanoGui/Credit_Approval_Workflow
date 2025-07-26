@@ -21,6 +21,11 @@ import redis.asyncio as aioredis
 from fastapi_cache.decorator import cache
 from utils import get_email_template
 from notifications import send_email
+from prometheus_client import Gauge
+import psutil
+
+cpu_usage_gauge = Gauge("cpu_usage_percent", "CPU usage percentage")
+memory_usage_gauge = Gauge("memory_usage_mb", "Memory usage in MB")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,6 +59,12 @@ def get_db():
     finally:
         db.close()
 
+@app.middleware("http")
+async def prometheus_resource_metrics(request, call_next):
+    response = await call_next(request)
+    cpu_usage_gauge.set(psutil.cpu_percent())
+    memory_usage_gauge.set(psutil.virtual_memory().used / 1024 / 1024)
+    return response
 
 def log_audit(db, user_id, action, credit_request_id, details=""):
     from models import AuditLog
