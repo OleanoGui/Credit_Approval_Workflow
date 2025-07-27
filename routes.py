@@ -2,11 +2,13 @@ import datetime
 import logging
 import os
 from typing import Optional
+from urllib import request
 
 from fastapi import FastAPI, Depends, HTTPException, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from fastapi import Request
 
 import jwt
 import models
@@ -67,19 +69,20 @@ async def prometheus_resource_metrics(request, call_next):
     memory_usage_gauge.set(psutil.virtual_memory().used / 1024 / 1024)
     return response
 
-def log_audit(db, user_id, action, credit_request_id, details=""):
+def log_audit(db, user_id, action, credit_request_id, details="", ip=None):
     from models import AuditLog
     audit = AuditLog(
         user_id=user_id,
         action=action,
         credit_request_id=credit_request_id,
-        details=details
+        details=details,
+        ip=ip
     )
     db.add(audit)
     db.commit()
 
 @api_v1.post("/token")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
@@ -92,7 +95,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         expires_delta=datetime.timedelta(days=7)
     )
     db = SessionLocal()
-    log_audit(db, user.id, "login", details="User logged in")
+    ip = request.client.host if request.client else None
+    log_audit(db, user.id, "login", details="User logged in", ip=ip)
     db.close()
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
@@ -173,9 +177,10 @@ def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
     }
 
 @api_v1.post("/logout")
-def logout(current_user: models.User = Depends(get_current_user)):
+def logout(request: Request, current_user: models.User = Depends(get_current_user)):
     db = SessionLocal()
-    log_audit(db, current_user.id, "logout", details="User logged out")
+    ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "logout", details="User logged out", ip=ip)
     db.close()
     return {"detail": "Logged out"}
 
@@ -201,7 +206,8 @@ def create_credit_request(user_id: int, amount: float, db: Session = Depends(get
     db.add(credit_request)
     db.commit()
     db.refresh(credit_request)
-
+    ip = request.client.host if request.client else None
+    log_audit(db, user_id, "create_credit_request", credit_request.id, f"Amount: {amount}", ip=ip)
     logger.info(f"Credit request created: id={credit_request.id}, user_id={user_id}, amount={amount}")
 
     if amount <= 10000:
@@ -246,7 +252,8 @@ def update_preferences(user_id: int, preferences: schemas.UserPreferences, db: S
     user.notify_email = preferences.notify_email
     user.notify_sms = preferences.notify_sms
     db.commit()
-    log_audit(db, current_user.id, "update_preferences", user_id, f"notify_email={preferences.notify_email}, notify_sms={preferences.notify_sms}")
+    ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "update_preferences", user_id, f"notify_email={preferences.notify_email}, notify_sms={preferences.notify_sms}", ip=ip)
     return {"detail": "Preferences updated"}
 
 @api_v1.post("/credit-requests/{credit_request_id}/approve")
@@ -271,7 +278,8 @@ def approve_stage(
     approval.approver_id = current_user.id
     approval.reviewed_at = datetime.datetime.utcnow()
     db.commit()
-    log_audit(db, current_user.id, "approve", credit_request_id, "Stage approved")
+    ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "approve", credit_request_id, "Stage approved", ip=ip)
     credit_request = db.query(models.CreditRequest).filter_by(id=credit_request_id).first()
     user = db.query(models.User).filter_by(id=credit_request.user_id).first()
     template = get_email_template("approved", credit_request_id)
@@ -316,7 +324,8 @@ def reject_stage(
     approval.reviewed_at = datetime.datetime.utcnow()
     approval.rejection_reason = reason
     db.commit()
-    log_audit(db, current_user.id, "reject", credit_request_id, f"Reason: {reason}")
+    ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "reject", credit_request_id, f"Reason: {reason}", ip=ip)
     credit_request = db.query(models.CreditRequest).filter_by(id=credit_request_id).first()
     user = db.query(models.User).filter_by(id=credit_request.user_id).first()
     template = get_email_template("rejected", credit_request_id)

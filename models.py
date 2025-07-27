@@ -76,6 +76,7 @@ class AuditLog(Base):
     action = Column(String, nullable=False)
     credit_request_id = Column(Integer, ForeignKey("credit_requests.id"), index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    ip = Column(String, nullable=True)
     details = Column(String)
     user = relationship("User")
     credit_request = relationship("CreditRequest")
