@@ -91,6 +91,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         data={"sub": user.username},
         expires_delta=datetime.timedelta(days=7)
     )
+    db = SessionLocal()
+    log_audit(db, user.id, "login", details="User logged in")
+    db.close()
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 def create_access_token(data: dict, expires_delta: datetime.timedelta):
@@ -169,6 +172,13 @@ def get_credit_request_status(request_id: int, db: Session = Depends(get_db)):
         "user_id": credit_request.user_id
     }
 
+@api_v1.post("/logout")
+def logout(current_user: models.User = Depends(get_current_user)):
+    db = SessionLocal()
+    log_audit(db, current_user.id, "logout", details="User logged out")
+    db.close()
+    return {"detail": "Logged out"}
+
 @api_v1.get("/admin-only/")
 def admin_only_endpoint(current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
@@ -236,6 +246,7 @@ def update_preferences(user_id: int, preferences: schemas.UserPreferences, db: S
     user.notify_email = preferences.notify_email
     user.notify_sms = preferences.notify_sms
     db.commit()
+    log_audit(db, current_user.id, "update_preferences", user_id, f"notify_email={preferences.notify_email}, notify_sms={preferences.notify_sms}")
     return {"detail": "Preferences updated"}
 
 @api_v1.post("/credit-requests/{credit_request_id}/approve")
