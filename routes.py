@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from fastapi import Request
+import pyotp
 
 import jwt
 import models
@@ -82,10 +83,16 @@ def log_audit(db, user_id, action, credit_request_id, details="", ip=None):
     db.commit()
 
 @api_v1.post("/token")
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), mfa_code: Optional[str] = None):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
+    if getattr(user, "mfa_enabled", False):
+        if not mfa_code:
+            raise HTTPException(status_code=400, detail="MFA code required")
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(mfa_code):
+            raise HTTPException(status_code=401, detail="Invalid MFA code")
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=datetime.timedelta(minutes=30)
@@ -355,6 +362,20 @@ def dashboard_summary(db: Session = Depends(get_db)):
         "pending": pending,
         "approved": approved,
         "rejected": rejected
+    }
+
+@api_v1.post("/users/{user_id}/enable-mfa")
+def enable_mfa(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    user = db.query(models.User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    secret = pyotp.random_base32()
+    user.mfa_secret = secret
+    user.mfa_enabled = True
+    db.commit()
+    return {
+        "mfa_secret": secret,
+        "otpauth_url": pyotp.totp.TOTP(secret).provisioning_uri(user.username, issuer_name="CreditWorkflow")
     }
 
 @api_v1.get("/health")
