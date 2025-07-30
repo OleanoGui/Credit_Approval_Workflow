@@ -36,6 +36,8 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    if is_token_blacklisted(token):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -71,3 +73,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.get("/me")
 def read_users_me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+# In-memory blacklist for tokens
+blacklisted_tokens = set()
+
+def blacklist_token(token: str):
+    blacklisted_tokens.add(token)
+
+def is_token_blacklisted(token: str) -> bool:
+    return token in blacklisted_tokens
