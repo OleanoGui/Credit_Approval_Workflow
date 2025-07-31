@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from fastapi import Request
 import pyotp
+from fastapi import Header
 
 import jwt
 import models
@@ -51,6 +52,12 @@ ROLE_PERMISSIONS = {
     "admin": {"create_user", "approve", "reject", "view_all"},
     "manager": {"approve", "reject", "view_all"},
     "analyst": {"approve", "reject", "view_own"},
+}
+
+APPROVAL_FLOWS = {
+    "pessoal": ["analyst"],
+    "empresarial": ["analyst", "manager"],
+    "consignado": ["analyst", "manager", "director"]
 }
 
 def has_permission(user, permission):
@@ -189,6 +196,11 @@ def logout(request: Request, current_user: models.User = Depends(get_current_use
     ip = request.client.host if request.client else None
     log_audit(db, current_user.id, "logout", details="User logged out", ip=ip)
     db.close()
+    authorization = request.headers.get("Authorization")
+    if authorization and authorization.startswith("Bearer "):
+        from auth import blacklist_token
+        token = authorization.split(" ")[1]
+        blacklist_token(token)
     return {"detail": "Logged out"}
 
 @api_v1.get("/admin-only/")
@@ -208,7 +220,12 @@ def create_workflow_stage(name: str, order: int, db: Session = Depends(get_db), 
     return stage
 
 @api_v1.post("/credit-requests/", response_model=CreditRequestResponse)
-def create_credit_request(user_id: int, amount: float, db: Session = Depends(get_db)):
+def create_credit_request(
+    user_id: int, 
+    amount: float, 
+    credit_type: str,
+    db: Session = Depends(get_db)
+):
     credit_request = models.CreditRequest(user_id=user_id, amount=amount)
     db.add(credit_request)
     db.commit()
@@ -217,13 +234,7 @@ def create_credit_request(user_id: int, amount: float, db: Session = Depends(get
     log_audit(db, user_id, "create_credit_request", credit_request.id, f"Amount: {amount}", ip=ip)
     logger.info(f"Credit request created: id={credit_request.id}, user_id={user_id}, amount={amount}")
 
-    if amount <= 10000:
-        stage_names = ['analyst']
-    elif amount <= 50000:
-        stage_names = ['analyst', 'manager']
-    else:
-        stage_names = ['analyst', 'manager', 'director']
-
+    stage_names = APPROVAL_FLOWS.get(credit_type, ["analyst"])
     stages = db.query(models.WorkflowStage).filter(models.WorkflowStage.name.in_(stage_names)).order_by(models.WorkflowStage.order).all()
     for stage in stages:
         approval = models.CreditRequestApproval(

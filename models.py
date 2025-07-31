@@ -4,6 +4,7 @@ import enum
 import datetime
 from database import engine, Base
 from sqlalchemy import Boolean
+from sqlalchemy import Column, String
 
 
 class ApprovalStatus(enum.Enum):
@@ -19,6 +20,8 @@ class User(Base):
     password = Column(String, nullable=False)
     notify_email = Column(Boolean, default=True)
     notify_sms = Column(Boolean, default=False)
+    mfa_enabled = Column(Boolean, default=False)
+    mfa_secret = Column(String, nullable=True) 
 
 class CreditRequest(Base):
     __tablename__ = "credit_requests"
@@ -28,6 +31,7 @@ class CreditRequest(Base):
     status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     user = relationship("User")
+    redit_type = Column(String, nullable=False, default="pessoal")
 
 class ApprovalStage(Base):
     __tablename__ = "approval_stages"
