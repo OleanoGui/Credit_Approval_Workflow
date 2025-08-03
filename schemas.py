@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, validator
+from sqlalchemy import JSON, Column
 
 class CreditRequestCreate(BaseModel):
     user_id: int = Field(..., gt=0, description="User ID must be positive")
@@ -33,6 +34,7 @@ model_config = {"from_attributes": True}
 class CreditRequestCreate(BaseModel):
     user_id: int
     amount: float
+    bureau_result = Column(JSON, nullable=True)
 
 class CreditRequestResponse(BaseModel):
     id: int
