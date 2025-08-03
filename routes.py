@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from fastapi import Request
 import pyotp
 from fastapi import Header
+from bureau import consulta_bureau_cpf, cpf_bureau_check
+
 
 import jwt
 import models
@@ -226,6 +228,11 @@ def create_credit_request(
     credit_type: str,
     db: Session = Depends(get_db)
 ):
+    user = db.query(models.User).filter_by(id=user_id).first()
+    bureau_result = cpf_bureau_check(user.cpf)
+    if bureau_result.get("restriction"):
+        logger.warning(f"Credit request blocked for user {user_id} due to bureau restriction.")
+        raise HTTPException(status_code=400, detail="Request blocked due to a restriction at the credit bureau")
     credit_request = models.CreditRequest(user_id=user_id, amount=amount)
     db.add(credit_request)
     db.commit()
