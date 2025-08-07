@@ -5,6 +5,7 @@ import datetime
 from database import engine, Base
 from sqlalchemy import Boolean
 from sqlalchemy import Column, String
+from sqlalchemy import Column, Integer, String, Float, Boolean
 
 
 class ApprovalStatus(enum.Enum):
@@ -84,6 +85,14 @@ class AuditLog(Base):
     details = Column(String)
     user = relationship("User")
     credit_request = relationship("CreditRequest")
+
+class BusinessRule(Base):
+    __tablename__ = "business_rules"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    min_rating = Column(Float, nullable=True)
+    min_income = Column(Float, nullable=True)
+    block_if_bureau_restriction = Column(Boolean, default=True)
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)

@@ -230,6 +230,14 @@ def create_credit_request(
 ):
     user = db.query(models.User).filter_by(id=user_id).first()
     bureau_result = cpf_bureau_check(user.cpf)
+    rule = db.query(models.BusinessRule).filter_by(name="default").first()
+
+    if rule.block_if_bureau_restriction and bureau_result.get("restriction"):
+        raise HTTPException(status_code=400, detail="Blocked by bureau restriction")
+    if rule.min_rating and getattr(user, "rating", 0) < rule.min_rating:
+        raise HTTPException(status_code=400, detail="Rating below minimum")
+    if rule.min_income and getattr(user, "income", 0) < rule.min_income:
+        raise HTTPException(status_code=400, detail="Income below minimum")
     if bureau_result.get("restriction"):
         logger.warning(f"Credit request blocked for user {user_id} due to bureau restriction.")
         raise HTTPException(status_code=400, detail="Request blocked due to a restriction at the credit bureau")
@@ -252,6 +260,16 @@ def create_credit_request(
         db.add(approval)
     db.commit()
     return credit_request
+
+@api_v1.put("/business-rules/{rule_id}")
+def update_business_rule(rule_id: int, rule_data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    rule = db.query(models.BusinessRule).filter_by(id=rule_id).first()
+    for key, value in rule_data.items():
+        setattr(rule, key, value)
+    db.commit()
+    return {"detail": "Rule updated"}
 
 @api_v1.get("/credit-requests/{credit_request_id}/approvals")
 def list_approvals(credit_request_id: int, db: Session = Depends(get_db)):
