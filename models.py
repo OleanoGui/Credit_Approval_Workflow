@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, Text
 from sqlalchemy.orm import declarative_base, relationship
 import enum
 import datetime
@@ -93,6 +93,17 @@ class BusinessRule(Base):
     min_rating = Column(Float, nullable=True)
     min_income = Column(Float, nullable=True)
     block_if_bureau_restriction = Column(Boolean, default=True)
+
+class NotificationLog(Base):
+    __tablename__ = "notification_logs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    notification_type = Column(String, nullable=False)  
+    destination = Column(String, nullable=False)        
+    status = Column(String, nullable=False)              
+    message = Column(Text)
+    response = Column(Text)                              
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)

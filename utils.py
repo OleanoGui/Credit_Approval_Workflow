@@ -32,3 +32,15 @@ def get_email_template(status: str, credit_request_id: int, reason: str = None) 
             f"Best regards,\nCredit Approval Team"
         )
     return {"subject": subject, "body": body}
+
+def send_email(db, user_id, to_email, subject, body):
+    try:
+        status = "sent"
+        response = "OK" 
+    except Exception as e:
+        status = "failed"
+        response = str(e)
+        log_notification(db, user_id, "email", to_email, status, body, response)
+    
+    def log_notification(db, user_id, notification_type, recipient, status, message, response):
+        print(f"Notification log: user_id={user_id}, type={notification_type}, recipient={recipient}, status={status}, message={message}, response={response}")
